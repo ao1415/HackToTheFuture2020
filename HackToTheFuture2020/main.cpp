@@ -751,8 +751,7 @@ public:
 						collect.y = py;
 					}
 				}
-				if (collect != goal)
-					signField[collect] = Panel::D;
+				signField[collect] = Panel::D;
 				break;
 			case 1:
 
@@ -769,8 +768,7 @@ public:
 						collect.y = py;
 					}
 				}
-				if (collect != goal)
-					signField[collect] = Panel::U;
+				signField[collect] = Panel::U;
 				break;
 			case 2:
 
@@ -787,8 +785,7 @@ public:
 						collect.x = px;
 					}
 				}
-				if (collect != goal)
-					signField[collect] = Panel::R;
+				signField[collect] = Panel::R;
 				break;
 			case 3:
 
@@ -805,12 +802,13 @@ public:
 						collect.x = px;
 					}
 				}
-				if (collect != goal)
-					signField[collect] = Panel::L;
+				signField[collect] = Panel::L;
 				break;
 			default:
 				break;
 			}
+
+			if (collect == goal) continue;
 
 			makeRangeTable(collect);
 
