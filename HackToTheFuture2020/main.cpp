@@ -379,7 +379,7 @@ private:
 
 				if (passTable[p] != Panel::None)
 				{
-					//*
+					/*
 					if (maxRange < stepTable[p])
 					{
 						maxRange = stepTable[p];
@@ -595,11 +595,8 @@ private:
 
 	}
 
-	vector<Command> greedy(const Robots& rangeSortRobots) const {
+	vector<Command> greedy(const Robots& rangeSortRobots, Field& signField, Field& passTable) const {
 
-		vector<Command> answer;
-		Field signField = field;
-		Field passTable(Panel::None);
 		Table stepTable(0);
 
 		//for (int i = 0; i < 1; i++)
@@ -610,6 +607,7 @@ private:
 			greedy(robot, signField, passTable, stepTable);
 		}
 
+		vector<Command> answer;
 		for (int y = 0; y < N; y++)
 		{
 			for (int x = 0; x < N; x++)
@@ -649,8 +647,10 @@ public:
 
 		//“ü—Í‡
 		{
+			Field signField = field;
+			Field passTable(Panel::None);
 			auto rangeSortRobots = iRobots;
-			const auto answer = greedy(rangeSortRobots);
+			const auto answer = greedy(rangeSortRobots, signField, passTable);
 			int score = Simulator(goal, field, iRobots, answer).getScore();
 			if (bestScore < score)
 			{
@@ -661,9 +661,11 @@ public:
 
 		//‰“‚¢‡
 		{
+			Field signField = field;
+			Field passTable(Panel::None);
 			auto rangeSortRobots = iRobots;
 			sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] > rangeTable[b.p]; });
-			const auto answer = greedy(rangeSortRobots);
+			const auto answer = greedy(rangeSortRobots, signField, passTable);
 			int score = Simulator(goal, field, iRobots, answer).getScore();
 			if (bestScore < score)
 			{
@@ -673,9 +675,11 @@ public:
 		}
 		//‹ß‚¢‡
 		{
+			Field signField = field;
+			Field passTable(Panel::None);
 			auto rangeSortRobots = iRobots;
 			sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] < rangeTable[b.p]; });
-			const auto answer = greedy(rangeSortRobots);
+			const auto answer = greedy(rangeSortRobots, signField, passTable);
 			int score = Simulator(goal, field, iRobots, answer).getScore();
 			if (bestScore < score)
 			{
@@ -686,14 +690,119 @@ public:
 
 		mt19937 randmt;
 		MilliSecTimer timer;
-		timer.set(chrono::milliseconds(2900));
+		timer.set(chrono::milliseconds(1000));
 
 		timer.start();
 		while (!timer)
 		{
+			Field signField = field;
+			Field passTable(Panel::None);
+
 			auto rangeSortRobots = iRobots;
 			shuffle(rangeSortRobots.begin(), rangeSortRobots.end(), randmt);
-			const auto answer = greedy(rangeSortRobots);
+			const auto answer = greedy(rangeSortRobots, signField, passTable);
+			int score = Simulator(goal, field, iRobots, answer).getScore();
+			if (bestScore < score)
+			{
+				bestScore = score;
+				bestAnswer = answer;
+			}
+		}
+
+		uniform_int_distribution<> rand4(0, 3);
+
+		timer.set(chrono::milliseconds(1800));
+		timer.start();
+		while (!timer)
+		{
+			Point collect = goal;
+			Field signField = field;
+			Field passTable(Panel::None);
+
+			int c = rand4(randmt) + rand4(randmt);
+			switch (rand4(randmt))
+			{
+			case 0:
+
+				for (int y = 0; y < c; y++)
+				{
+					int py = (goal.y - 1 - y + N) % N;
+					if (field[py][goal.x] == Panel::Block)
+					{
+						break;
+					}
+					else
+					{
+						passTable[py][goal.x] = Panel::D;
+						collect.y = py;
+					}
+				}
+				if (collect != goal)
+					signField[collect] = Panel::D;
+				break;
+			case 1:
+
+				for (int y = 0; y < c; y++)
+				{
+					int py = (goal.y + 1 + y + N) % N;
+					if (field[py][goal.x] == Panel::Block)
+					{
+						break;
+					}
+					else
+					{
+						passTable[py][goal.x] = Panel::U;
+						collect.y = py;
+					}
+				}
+				if (collect != goal)
+					signField[collect] = Panel::U;
+				break;
+			case 2:
+
+				for (int x = 0; x < c; x++)
+				{
+					int px = (goal.x - 1 - x + N) % N;
+					if (field[goal.y][px] == Panel::Block)
+					{
+						break;
+					}
+					else
+					{
+						passTable[goal.y][px] = Panel::R;
+						collect.x = px;
+					}
+				}
+				if (collect != goal)
+					signField[collect] = Panel::R;
+				break;
+			case 3:
+
+				for (int x = 0; x < c; x++)
+				{
+					int px = (goal.x + 1 + x + N) % N;
+					if (field[goal.y][px] == Panel::Block)
+					{
+						break;
+					}
+					else
+					{
+						passTable[goal.y][px] = Panel::L;
+						collect.x = px;
+					}
+				}
+				if (collect != goal)
+					signField[collect] = Panel::L;
+				break;
+			default:
+				break;
+			}
+
+			makeRangeTable(collect);
+
+			auto rangeSortRobots = iRobots;
+			shuffle(rangeSortRobots.begin(), rangeSortRobots.end(), randmt);
+			const auto answer = greedy(rangeSortRobots, signField, passTable);
 			int score = Simulator(goal, field, iRobots, answer).getScore();
 			if (bestScore < score)
 			{
