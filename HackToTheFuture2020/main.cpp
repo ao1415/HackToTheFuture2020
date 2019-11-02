@@ -12,6 +12,7 @@
 #include <valarray>
 #include <functional>
 #include <unordered_map>
+#include <list>
 
 using namespace std;
 
@@ -173,7 +174,7 @@ private:
 
 	}
 
-	void greedy(Robot robot, Field& signField, Field& passTable) const {
+	void greedy(Robot robot, Field& signField, Field& passTable, Table& stepTable) const {
 
 		const auto checkPassRoute = [&](const Point& d) {
 			Point p = robot.p;
@@ -208,9 +209,9 @@ private:
 
 				if (passTable[p] != Panel::None)
 				{
-					if (maxRange < rangeTable[p])
+					if (maxRange < stepTable[p])
 					{
-						maxRange = rangeTable[p];
+						maxRange = stepTable[p];
 						maxPos = p;
 					}
 				}
@@ -219,7 +220,8 @@ private:
 			return pair<bool, Point>{maxRange > 0, maxPos};
 		};
 
-		Field myPassTable = passTable;
+		list<Robot> passList;
+		int baseStep = 0;
 
 		while (robot.p != goal)
 		{
@@ -252,10 +254,14 @@ private:
 				{
 					for (int i = 0; i < N; i++)
 					{
-						if (passTable[robot.p] == Panel::None) myPassTable[robot.p] = robot.c;
+						passList.push_front(robot);
 						robot.p.x = (robot.p.x + d.x + N) % N;
 						robot.p.y = (robot.p.y + d.y + N) % N;
-						if (robot.p == result.second) break;
+						if (robot.p == result.second)
+						{
+							baseStep = stepTable[result.second] + 1;
+							break;
+						}
 					}
 				}
 				else
@@ -333,10 +339,14 @@ private:
 
 						for (int i = 0; i < N; i++)
 						{
-							if (passTable[robot.p] == Panel::None) myPassTable[robot.p] = robot.c;
+							passList.push_front(robot);
 							robot.p.x = (robot.p.x + d2.x + N) % N;
 							robot.p.y = (robot.p.y + d2.y + N) % N;
-							if (robot.p == maxPos) break;
+							if (robot.p == maxPos)
+							{
+								baseStep = stepTable[maxPos] + 1;
+								break;
+							}
 						}
 					}
 					else
@@ -347,7 +357,7 @@ private:
 
 						if (rangeTable[robot.p] > rangeTable[nextPos])
 						{
-							myPassTable[robot.p] = robot.c;
+							passList.push_front(robot);
 							robot.p = nextPos;
 						}
 						else
@@ -356,28 +366,28 @@ private:
 							{
 								signField[robot.p] = Panel::U;
 								robot.c = signField[robot.p];
-								myPassTable[robot.p] = robot.c;
+								passList.push_front(robot);
 								robot.p.y = (robot.p.y - 1 + N) % N;
 							}
 							else if (rangeTable[robot.p] > rangeTable[(robot.p.y + 1) % N][robot.p.x])
 							{
 								signField[robot.p] = Panel::D;
 								robot.c = signField[robot.p];
-								myPassTable[robot.p] = robot.c;
+								passList.push_front(robot);
 								robot.p.y = (robot.p.y + 1) % N;
 							}
 							else if (rangeTable[robot.p] > rangeTable[robot.p.y][(robot.p.x - 1 + N) % N])
 							{
 								signField[robot.p] = Panel::L;
 								robot.c = signField[robot.p];
-								myPassTable[robot.p] = robot.c;
+								passList.push_front(robot);
 								robot.p.x = (robot.p.x - 1 + N) % N;
 							}
 							else if (rangeTable[robot.p] > rangeTable[robot.p.y][(robot.p.x + 1) % N])
 							{
 								signField[robot.p] = Panel::R;
 								robot.c = signField[robot.p];
-								myPassTable[robot.p] = robot.c;
+								passList.push_front(robot);
 								robot.p.x = (robot.p.x + 1) % N;
 							}
 							else
@@ -392,7 +402,18 @@ private:
 			}
 		}
 
-		passTable = myPassTable;
+		{
+			int step = baseStep;
+			for (const auto& pass : passList)
+			{
+				if (passTable[pass.p] == Panel::None)
+				{
+					passTable[pass.p] = pass.c;
+					stepTable[pass.p] = step;
+				}
+				step++;
+			}
+		}
 
 	}
 
@@ -401,13 +422,14 @@ private:
 		vector<Command> answer;
 		Field signField = field;
 		Field passTable(Panel::None);
+		Table stepTable(0);
 
 		//for (int i = 0; i < 1; i++)
 		for (int i = 0; i < M; i++)
 		{
 			Robot robot = rangeSortRobots[i];
 
-			greedy(robot, signField, passTable);
+			greedy(robot, signField, passTable, stepTable);
 		}
 
 		for (int y = 0; y < N; y++)
@@ -445,7 +467,8 @@ public:
 	vector<Command> think() {
 
 		auto rangeSortRobots = iRobots;
-		sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] > rangeTable[b.p]; });
+		//sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] > rangeTable[b.p]; });
+		sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] < rangeTable[b.p]; });
 
 		const auto answer = greedy(rangeSortRobots);
 
