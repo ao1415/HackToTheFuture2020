@@ -172,6 +172,19 @@ public:
 
 };
 
+struct XorShift {
+	unsigned int x;
+	XorShift() : x(2463534242U) {}
+	unsigned int rand() {
+		x ^= (x << 13);
+		x ^= (x >> 17);
+		x ^= (x << 5);
+		return x;
+	}
+
+};
+
+
 constexpr int N = 40;
 constexpr int M = 100;
 constexpr int B = 300;
@@ -690,7 +703,7 @@ public:
 
 		mt19937 randmt;
 		MilliSecTimer timer;
-		timer.set(chrono::milliseconds(1000));
+		timer.set(chrono::milliseconds(500));
 
 		timer.start();
 		while (!timer)
@@ -710,8 +723,9 @@ public:
 		}
 
 		uniform_int_distribution<> rand4(0, 3);
+		XorShift randxs;
 
-		timer.set(chrono::milliseconds(1800));
+		timer.set(chrono::milliseconds(2400));
 		timer.start();
 		while (!timer)
 		{
@@ -719,8 +733,8 @@ public:
 			Field signField = field;
 			Field passTable(Panel::None);
 
-			int c = rand4(randmt) + rand4(randmt);
-			switch (rand4(randmt))
+			int c = (randxs.rand() & 0x3) + (randxs.rand() & 0x3);
+			switch ((randxs.rand() & 0x3))
 			{
 			case 0:
 
