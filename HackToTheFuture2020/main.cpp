@@ -379,18 +379,19 @@ private:
 
 				if (passTable[p] != Panel::None)
 				{
-					/*
+					//*
 					if (maxRange < stepTable[p])
 					{
 						maxRange = stepTable[p];
 						maxPos = p;
 					}
-					*/
+					/*/
 					if (maxRange < rangeTable[p])
 					{
 						maxRange = rangeTable[p];
 						maxPos = p;
 					}
+					//*/
 				}
 			}
 
