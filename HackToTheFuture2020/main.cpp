@@ -129,9 +129,99 @@ struct Command {
 };
 
 using Field = FixedGrid<Panel, N, N>;
-using Table = FixedGrid<int, N, N>;
 using BitTable = FixedGrid<bool, N, N>;
+using Table = FixedGrid<int, N, N>;
 using Robots = array<Robot, M>;
+
+class Simulator {
+private:
+
+	const Point goal;
+	const Field field;
+	const Robots robots;
+	const vector<Command> command;
+
+	int score = 0;
+
+	Field table;
+	BitTable pass;
+
+	int calc(Robot robot) {
+
+		while (robot.p != goal)
+		{
+			pass[robot.p] = true;
+
+			if (table[robot.p] != Panel::None)
+			{
+				if (table[robot.p] == Panel::Block)
+				{
+					break;
+				}
+				else
+				{
+					robot.c = table[robot.p];
+				}
+			}
+
+			switch (robot.c)
+			{
+			case Panel::U: robot.p.y = (robot.p.y - 1 + N) % N; break;
+			case Panel::D: robot.p.y = (robot.p.y + 1) % N; break;
+			case Panel::L: robot.p.x = (robot.p.x - 1 + N) % N; break;
+			case Panel::R: robot.p.x = (robot.p.x + 1) % N; break;
+			default:
+				break;
+			}
+		}
+
+		if (robot.p == goal)
+			return 1000;
+
+		return 0;
+	}
+
+	int calc() {
+
+		int add = 0;
+
+		for (const auto& robot : robots)
+		{
+			add += calc(robot);
+		}
+
+		add -= static_cast<int>(command.size()) * 10;
+
+		for (int y = 0; y < N; y++)
+		{
+			for (int x = 0; x < N; x++)
+			{
+				add += pass[y][x];
+			}
+		}
+
+		return add;
+	}
+
+public:
+
+	Simulator(const Point _goal, const Field& _field, const Robots& _robots, const vector<Command>& _command)
+		: goal(_goal), field(_field), robots(_robots), command(_command) {
+
+
+		table = field;
+		pass.fill(false);
+		for (const auto& com : command)
+		{
+			table[com.p] = com.c;
+		}
+
+		score = calc();
+	}
+
+	const int getScore() const { return score; }
+
+};
 
 class Ai {
 private:
@@ -466,13 +556,49 @@ public:
 
 	vector<Command> think() {
 
-		auto rangeSortRobots = iRobots;
-		//sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] > rangeTable[b.p]; });
-		sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] < rangeTable[b.p]; });
+		vector<Command> bestAnswer;
+		int bestScore = 0;
 
-		const auto answer = greedy(rangeSortRobots);
+		//ì¸óÕèá
+		{
+			auto rangeSortRobots = iRobots;
+			const auto answer = greedy(rangeSortRobots);
+			int score = Simulator(goal, field, iRobots, answer).getScore();
+			if (bestScore < score)
+			{
+				bestScore = score;
+				bestAnswer = answer;
+			}
+		}
 
-		if (!answer.empty()) return answer;
+		//âìÇ¢èá
+		{
+			auto rangeSortRobots = iRobots;
+			sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] > rangeTable[b.p]; });
+			const auto answer = greedy(rangeSortRobots);
+			int score = Simulator(goal, field, iRobots, answer).getScore();
+			if (bestScore < score)
+			{
+				bestScore = score;
+				bestAnswer = answer;
+			}
+		}
+		//ãﬂÇ¢èá
+		{
+			auto rangeSortRobots = iRobots;
+			sort(rangeSortRobots.begin(), rangeSortRobots.end(), [&](const decltype(rangeSortRobots)::reference a, const decltype(rangeSortRobots)::reference b) {return rangeTable[a.p] < rangeTable[b.p]; });
+			const auto answer = greedy(rangeSortRobots);
+			int score = Simulator(goal, field, iRobots, answer).getScore();
+			if (bestScore < score)
+			{
+				bestScore = score;
+				bestAnswer = answer;
+			}
+		}
+
+
+
+		if (!bestAnswer.empty()) return bestAnswer;
 		return { Command{0,0,Panel::U} };
 	}
 
