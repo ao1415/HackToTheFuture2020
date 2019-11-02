@@ -722,10 +722,9 @@ public:
 			}
 		}
 
-		uniform_int_distribution<> rand4(0, 3);
 		XorShift randxs;
 
-		timer.set(chrono::milliseconds(2400));
+		timer.set(chrono::milliseconds(2480));
 		timer.start();
 		while (!timer)
 		{
@@ -733,7 +732,7 @@ public:
 			Field signField = field;
 			Field passTable(Panel::None);
 
-			int c = (randxs.rand() & 0x3) + (randxs.rand() & 0x3);
+			int c = (randxs.rand() & 0x8);
 			switch ((randxs.rand() & 0x3))
 			{
 			case 0:
